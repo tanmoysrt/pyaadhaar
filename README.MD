@@ -317,3 +317,14 @@ True # If it is a new secure QR code, else False
 ---
 
 ---
+
+# Contributors
+
+#### Thanks to the developer of these library
+
+- [Opencv](https://pypi.org/project/opencv-python/)
+- [Pillow](https://pypi.org/project/Pillow/)
+- [Libjpeg](https://pypi.org/project/pylibjpeg-libjpeg/)
+- [Numpy](https://pypi.org/project/numpy/)
+
+---
