@@ -1,14 +1,13 @@
 Metadata-Version: 2.1
 Name: pyaadhaar
-Version: 1.1.0
+Version: 1.1.1
 Summary: This library is built to ease the process of decoding aadhaar QR codes and XML. It supprts old aadhaar QR codes , newly released Secure aadhaar QR codes and also Offline e-KYC XML. This library also can decode QR codes with Opncv. This library bundled with all the features to verify user's Email Id and Mobile Number & also to extract the photo of user. 
 Home-page: https://github.com/Tanmoy741127/pyaadhaar
 Author: Tanmoy Sarkar
 Author-email: ts741127@gmail.com
 License: MIT
-Description: ## PyAdhaar Library
+Description: ## PyAadhaar Library
         
-        ---
         ---
         
         #### Designed to decode Aadhaar Old QR Code , Secure QR Code and also Offline XML
@@ -275,9 +274,11 @@ Description: ## PyAdhaar Library
         ```
         
         **Output :**
+        
         ```
         ["google.com","amazon.in"] # Will return a list of data
         ```
+        
         ---
         
         ---
@@ -285,22 +286,28 @@ Description: ## PyAdhaar Library
         ### **`|| Aadhaar Auto Initialize Class On QR code Type ||`**
         
         ---
+        
         #### **`=> Initialize`**
+        
         ```
         
         from pyaadhaar.utils import AadhaarQrAuto
         
         obj = AadhaarQrAuto(<Aadhaar QR code Data >)
         ```
-        * Then all the methods are same corresponding to
-            * AadhaarOldQr
-            * AadhaarSecureQr
+        
+        - Then all the methods are same corresponding to
+          - AadhaarOldQr
+          - AadhaarSecureQr
         
         ---
+        
         ---
+        
         ### **`|| Aadhaar Check Old or Secure QR Code||`**
         
         ---
+        
         #### **`=> Initialize`**
         
         ```
@@ -308,13 +315,17 @@ Description: ## PyAdhaar Library
         
         print(isSecureQr(<Aadhaar QR code Data >))
         ```
+        
         **Output :**
         
         ```
         True # If it is a new secure QR code, else False
         ```
+        
         ---
+        
         ---
+        
 Keywords: software development aadhaar e-kyc verification
 Platform: UNKNOWN
 Classifier: Development Status :: 4 - Beta
