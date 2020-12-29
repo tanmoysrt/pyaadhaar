@@ -1,4 +1,4 @@
-## Project Description -- PyAadhaar
+## PyAadhaar Library
 
 ---
 
