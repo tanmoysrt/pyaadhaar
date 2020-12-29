@@ -17,7 +17,7 @@ setup(
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers ',
-        'Topic :: Software Development :: Aadhaar e-KYC Verification',
+        'Topic :: Software Development :: Libraries :: Python Modules',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3.8',
     ],
@@ -26,7 +26,6 @@ setup(
     install_requires=[
         'numpy',
         'opencv-python',
-        'pandas',
         'Pillow',
         'pylibjpeg',
         'pylibjpeg-openjpeg',

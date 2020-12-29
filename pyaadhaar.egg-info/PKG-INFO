@@ -319,7 +319,7 @@ Keywords: software development aadhaar e-kyc verification
 Platform: UNKNOWN
 Classifier: Development Status :: 4 - Beta
 Classifier: Intended Audience :: Developers 
-Classifier: Topic :: Software Development :: Aadhaar e-KYC Verification
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Programming Language :: Python :: 3.8
 Requires-Python: >=3.6

@@ -1,6 +1,5 @@
 numpy
 opencv-python
-pandas
 Pillow
 pylibjpeg
 pylibjpeg-openjpeg
