@@ -1,9 +1,10 @@
 import zlib
-from pyaadhaar.utils import SHAGenerator
 from io import BytesIO
 from PIL import Image
-from .deocde import SHAGenerator
 import xml.etree.ElementTree as ET
+from io import BytesIO
+from PIL import Image
+import base64
 
 
 class AdhaarSecureQr:
