@@ -320,7 +320,7 @@ True # If it is a new secure QR code, else False
 
 # Contributors
 
-#### Thanks to the developer of these library
+#### Thanks to the developer of these libraries
 
 - [Opencv](https://pypi.org/project/opencv-python/)
 - [Pillow](https://pypi.org/project/Pillow/)
