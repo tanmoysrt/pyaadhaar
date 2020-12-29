@@ -1,6 +1,4 @@
-## PyAdhaar Library
-
-## [![Coverage Status](https://coveralls.io/repos/github/Tanmoy741127/pyaadhaar/badge.svg?branch=main)](https://coveralls.io/github/Tanmoy741127/pyaadhaar?branch=main)
+## Project Description -- PyAadhaar
 
 ---
 
