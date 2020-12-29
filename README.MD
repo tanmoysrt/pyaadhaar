@@ -1,6 +1,7 @@
 ## PyAdhaar Library
 
----
+## [![Coverage Status](https://coveralls.io/repos/github/Tanmoy741127/pyaadhaar/badge.svg?branch=main)](https://coveralls.io/github/Tanmoy741127/pyaadhaar?branch=main)
+
 ---
 
 #### Designed to decode Aadhaar Old QR Code , Secure QR Code and also Offline XML
@@ -267,9 +268,11 @@ print(Qr_img_to_text(<Image File Location or Image file stream>))
 ```
 
 **Output :**
+
 ```
 ["google.com","amazon.in"] # Will return a list of data
 ```
+
 ---
 
 ---
@@ -277,22 +280,28 @@ print(Qr_img_to_text(<Image File Location or Image file stream>))
 ### **`|| Aadhaar Auto Initialize Class On QR code Type ||`**
 
 ---
+
 #### **`=> Initialize`**
+
 ```
 
 from pyaadhaar.utils import AadhaarQrAuto
 
 obj = AadhaarQrAuto(<Aadhaar QR code Data >)
 ```
-* Then all the methods are same corresponding to
-    * AadhaarOldQr
-    * AadhaarSecureQr
+
+- Then all the methods are same corresponding to
+  - AadhaarOldQr
+  - AadhaarSecureQr
 
 ---
+
 ---
+
 ### **`|| Aadhaar Check Old or Secure QR Code||`**
 
 ---
+
 #### **`=> Initialize`**
 
 ```
@@ -300,10 +309,13 @@ from pyaadhaar.utils import isSecureQr
 
 print(isSecureQr(<Aadhaar QR code Data >))
 ```
+
 **Output :**
 
 ```
 True # If it is a new secure QR code, else False
 ```
+
 ---
+
 ---
