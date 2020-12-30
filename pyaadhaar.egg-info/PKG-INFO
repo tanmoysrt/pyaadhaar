@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: pyaadhaar
-Version: 1.1.1
+Version: 1.1.2
 Summary: This library is built to ease the process of decoding aadhaar QR codes and XML. It supprts old aadhaar QR codes , newly released Secure aadhaar QR codes and also Offline e-KYC XML. This library also can decode QR codes with Opncv. This library bundled with all the features to verify user's Email Id and Mobile Number & also to extract the photo of user. 
 Home-page: https://github.com/Tanmoy741127/pyaadhaar
 Author: Tanmoy Sarkar
@@ -323,6 +323,17 @@ Description: ## PyAadhaar Library
         ```
         
         ---
+        
+        ---
+        
+        # Contributors
+        
+        #### Thanks to the developer of these libraries
+        
+        - [Opencv](https://pypi.org/project/opencv-python/)
+        - [Pillow](https://pypi.org/project/Pillow/)
+        - [Libjpeg](https://pypi.org/project/pylibjpeg-libjpeg/)
+        - [Numpy](https://pypi.org/project/numpy/)
         
         ---
         
