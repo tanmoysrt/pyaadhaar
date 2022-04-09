@@ -43,9 +43,9 @@ def AadhaarQrAuto(data):
     # create the object of respective class and will return the oobject
 
     if isSecureQr(data):
-        return pyaadhaar.deocde.AdhaarSecureQr(int(data))
+        return pyaadhaar.decode.AdhaarSecureQr(int(data))
     else:
-        return pyaadhaar.deocde.AdhaarOldQr(data)
+        return pyaadhaar.decode.AdhaarOldQr(data)
 
 
 def Qr_img_to_text(file):
