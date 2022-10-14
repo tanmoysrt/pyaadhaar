@@ -38,8 +38,6 @@ class AadhaarSecureQr:
         for i in range(len(self.details)):
             self.data[self.details[i]] = self.decompressed_array[self.delimeter[i] + 1:self.delimeter[i+1]].decode("ISO-8859-1")
 
-        
-        
         self.data['adhaar_last_4_digit'] = self.data['referenceid'][0:4]
         self.data['adhaar_last_digit'] = self.data['referenceid'][3]
         
