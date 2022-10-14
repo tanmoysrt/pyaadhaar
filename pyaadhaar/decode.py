@@ -42,9 +42,6 @@ class AadhaarSecureQr:
         
         self.data['adhaar_last_4_digit'] = self.data['referenceid'][0:4]
         self.data['adhaar_last_digit'] = self.data['referenceid'][3]
-
-        # Testing Purpose
-        print(self.data)
         
         if self.data['email_mobile_status'] == "0":
             self.data['email'] = "no"
