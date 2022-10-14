@@ -15,7 +15,7 @@ class AadhaarSecureQr:
 
     def __init__(self, base10encodedstring):
         self.base10encodedstring = base10encodedstring
-        self.details = ["referenceid", "name", "dob", "gender", "careof", "district", "landmark",
+        self.details = ["version","email_mobile_status","referenceid", "name", "dob", "gender", "careof", "district", "landmark",
                         "house", "location", "pincode", "postoffice", "state", "street", "subdistrict", "vtc"]
         self.delimeter = []
         self.data = {}
@@ -25,20 +25,22 @@ class AadhaarSecureQr:
         self.decompressed_array = zlib.decompress(
             bytes_array, 16+zlib.MAX_WBITS)
 
+        # FIX: Patch for the 2022 Aadhaar Cards
+        # The decoded data from these cards is reproducing a 'V2' at 0th and 1st index
+        if not self.decompressed_array[0:2].decode("ISO-8859-1") == 'V2':
+            self.details.pop(0)
+        
+        self.delimeter.append(-1)
         for i in range(len(self.decompressed_array)):
             if self.decompressed_array[i] == 255:
                 self.delimeter.append(i)
 
-        self.data['email_mobile_status'] = self.decompressed_array[0:1].decode(
-            "ISO-8859-1")
-
-        for i in range(15):
-            self.data[self.details[i]] = self.decompressed_array[self.delimeter[i] +
-                                                                 1:self.delimeter[i+1]].decode("ISO-8859-1")
+        for i in range(len(self.details)):
+            self.data[self.details[i]] = self.decompressed_array[self.delimeter[i] + 1:self.delimeter[i+1]].decode("ISO-8859-1")
 
         self.data['adhaar_last_4_digit'] = self.data['referenceid'][0:4]
         self.data['adhaar_last_digit'] = self.data['referenceid'][3]
-
+        
         if self.data['email_mobile_status'] == "0":
             self.data['email'] = "no"
             self.data['mobile'] = "no"
@@ -264,3 +266,4 @@ class AadhaarOfflineXML:
             return True
         else:
             return False
+
