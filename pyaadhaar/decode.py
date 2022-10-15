@@ -26,6 +26,7 @@ class AadhaarSecureQr:
         self._extract_info_from_decompressed_array()
 
     def _convert_base10encoded_to_decompressed_array(self):
+        # This function converts base10encoded string to a decompressed array
         bytes_array = self.base10encodedstring.to_bytes(5000, 'big').lstrip(b'\x00')
         self.decompressed_array = zlib.decompress(
             bytes_array, 16+zlib.MAX_WBITS)
