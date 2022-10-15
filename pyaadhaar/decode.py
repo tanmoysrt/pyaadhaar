@@ -14,7 +14,6 @@ class AadhaarSecureQr:
     # For more information check here : https://103.57.226.101/images/resource/User_manulal_QR_Code_15032019.pdf
 
     def __init__(self, base10encodedstring):
-        self.base10encodedstring = base10encodedstring
         self.details = ["version","email_mobile_status","referenceid", "name", "dob", "gender", "careof", "district", "landmark",
                         "house", "location", "pincode", "postoffice", "state", "street", "subdistrict", "vtc"]
         self.delimeter = []
