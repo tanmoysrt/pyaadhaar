@@ -11,47 +11,50 @@ import pyaadhaar
 class AadhaarSecureQr:
     # This is the class for Adhaar Secure Qr code..  In this version of code the data is in encrypted format
     # The special thing of this type of QR is that we can extract the photo of user from the data
+    # This class now supports 2022 version of Aadhaar QR codes [version-2]
     # For more information check here : https://103.57.226.101/images/resource/User_manulal_QR_Code_15032019.pdf
 
     def __init__(self, base10encodedstring):
+        self.base10encodedstring = base10encodedstring
         self.details = ["version","email_mobile_status","referenceid", "name", "dob", "gender", "careof", "district", "landmark",
                         "house", "location", "pincode", "postoffice", "state", "street", "subdistrict", "vtc"]
-        self.delimeter = []
+        self.delimeter = [-1]
         self.data = {}
+        self._convert_base10encoded_to_decompressed_array()
+        self._check_aadhaar_version()
+        self._create_delimeter()
+        self._extract_info_from_decompressed_array()
 
-        bytes_array = base10encodedstring.to_bytes(5000, 'big').lstrip(b'\x00')
-
+    def _convert_base10encoded_to_decompressed_array(self):
+        bytes_array = self.base10encodedstring.to_bytes(5000, 'big').lstrip(b'\x00')
         self.decompressed_array = zlib.decompress(
             bytes_array, 16+zlib.MAX_WBITS)
 
-        # FIX: Patch for the 2022 Aadhaar Cards
-        # The decoded data from these cards is reproducing a 'V2' at 0th and 1st index
+    def _check_aadhaar_version(self):
+        # This function will check for the new 2022 version-2 Aadhaar QRs
+        # If not found it will remove the "version" key from self.details, Defaulting to normal Secure QRs
         if not self.decompressed_array[0:2].decode("ISO-8859-1") == 'V2':
             self.details.pop(0)
-        
-        self.delimeter.append(-1)
+
+    def _create_delimeter(self):
+        # This function creates the delimeter which is used to extract the information from the decompressed array
         for i in range(len(self.decompressed_array)):
             if self.decompressed_array[i] == 255:
                 self.delimeter.append(i)
 
+    def _extract_info_from_decompressed_array(self):
         for i in range(len(self.details)):
             self.data[self.details[i]] = self.decompressed_array[self.delimeter[i] + 1:self.delimeter[i+1]].decode("ISO-8859-1")
-
         self.data['adhaar_last_4_digit'] = self.data['referenceid'][0:4]
         self.data['adhaar_last_digit'] = self.data['referenceid'][3]
-        
-        if self.data['email_mobile_status'] == "0":
-            self.data['email'] = "no"
-            self.data['mobile'] = "no"
-        elif self.data['email_mobile_status'] == "1":
-            self.data['email'] = "yes"
-            self.data['mobile'] = "no"
-        elif self.data['email_mobile_status'] == "2":
-            self.data['email'] = "no"
-            self.data['mobile'] = "yes"
-        elif self.data['email_mobile_status'] == "3":
-            self.data['email'] = "yes"
-            self.data['mobile'] = "yes"
+        # Default values to 'email' and 'mobile
+        self.data['email'] = False
+        self.data['mobile'] = False
+        # Updating the fields of 'email' and 'mobile'
+        if int(self.data['email_mobile_status']) == 3 or int(self.data['email_mobile_status']) == 1:
+            self.data['email'] = True
+        if int(self.data['email_mobile_status']) == 3 or int(self.data['email_mobile_status']) == 2:
+            self.data['mobile'] = True
 
     def decodeddata(self):
         # Will return the personal data in a dictionary format
@@ -70,15 +73,11 @@ class AadhaarSecureQr:
 
     def isMobileNoRegistered(self):
         # Will return True if mobile number is registered
-        if self.data['mobile'] == "yes":
-            return True
-        return False
+        return self.data['mobile']
 
     def isEmailRegistered(self):
         # Will return True if email id is registered
-        if self.data['email'] == "yes":
-            return True
-        return False
+        return self.data['email']
 
     def sha256hashOfEMail(self):
         # Will return the hash of the email id
