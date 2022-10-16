@@ -71,13 +71,13 @@ class AadhaarSecureQr:
 
     def isMobileNoRegistered(self):
         # Will return True if mobile number is registered
-        if int(self.data['email_mobile_status']) == 3 or int(self.data['email_mobile_status']) == 1:
+        if self.data['mobile'] == "yes":
             return True
         return False
 
     def isEmailRegistered(self):
         # Will return True if email id is registered
-        if int(self.data['email_mobile_status']) == 3 or int(self.data['email_mobile_status']) == 2:
+        if self.data['email'] == "yes":
             return True
         return False
 
