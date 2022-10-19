@@ -87,7 +87,7 @@ class AadhaarSecureQr:
         if int(self.data['email_mobile_status']) == 3:
             tmp = self.decompressed_array[len(
                 self.decompressed_array)-256-32-32:len(self.decompressed_array)-256-32].hex()
-        elif int(self.data['email_mobile_status']) == 2:
+        elif int(self.data['email_mobile_status']) == 1:
             tmp = self.decompressed_array[len(
                 self.decompressed_array)-256-32:len(self.decompressed_array)-256].hex()
         return tmp
@@ -95,7 +95,7 @@ class AadhaarSecureQr:
     def sha256hashOfMobileNumber(self):
         # Will return the hash of mobile number
         tmp = ""
-        if int(self.data['email_mobile_status']) == 3 or int(self.data['email_mobile_status']) == 1:
+        if int(self.data['email_mobile_status']) == 3 or int(self.data['email_mobile_status']) == 2:
             tmp = self.decompressed_array[len(
                 self.decompressed_array)-256-32:len(self.decompressed_array)-256].hex()
         return tmp
