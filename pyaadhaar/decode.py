@@ -1,6 +1,7 @@
 import zlib
 from io import BytesIO
-from PIL import Image
+from PIL import Image, ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 import xml.etree.ElementTree as ET
 from io import BytesIO
 import base64
@@ -17,7 +18,7 @@ class AadhaarSecureQr:
     def __init__(self, base10encodedstring):
         self.base10encodedstring = base10encodedstring
         self.details = ["version","email_mobile_status","referenceid", "name", "dob", "gender", "careof", "district", "landmark",
-                        "house", "location", "pincode", "postoffice", "state", "street", "subdistrict", "vtc"]
+                        "house", "location", "pincode", "postoffice", "state", "street", "subdistrict", "vtc", "last_4_digits_mobile_no"]
         self.delimeter = [-1]
         self.data = {}
         self._convert_base10encoded_to_decompressed_array()
@@ -35,8 +36,8 @@ class AadhaarSecureQr:
         # This function will check for the new 2022 version-2 Aadhaar QRs
         # If not found it will remove the "version" key from self.details, Defaulting to normal Secure QRs
         if not self.decompressed_array[0:2].decode("ISO-8859-1") == 'V2':
-            self.details.pop(0)
-
+            self.details.pop(0) # Removing "Version"
+            self.details.pop() # Removing "Last_4_digits_of_mobile_no"
     def _create_delimeter(self):
         # This function creates the delimeter which is used to extract the information from the decompressed array
         for i in range(len(self.decompressed_array)):
@@ -102,17 +103,18 @@ class AadhaarSecureQr:
     def image(self):
         # Will return the image stream to be used in another function
         if int(self.data['email_mobile_status']) == 3:
-            return Image.open(BytesIO(self.decompressed_array[self.delimeter[15]+1:len(self.decompressed_array)-256-32-32]))
+            return Image.open(BytesIO(self.decompressed_array[self.delimeter[len(self.details)]+1:len(self.decompressed_array)]))
         elif int(self.data['email_mobile_status']) == 2 or int(self.data['email_mobile_status']) == 1:
-            return Image.open(BytesIO(self.decompressed_array[self.delimeter[15]+1:len(self.decompressed_array)-256-32]))
+            return Image.open(BytesIO(self.decompressed_array[self.delimeter[len(self.details)]+1:len(self.decompressed_array)]))
         elif int(self.data['email_mobile_status']) == 0:
-            return Image.open(BytesIO(self.decompressed_array[self.delimeter[15]+1:len(self.decompressed_array)-256]))
+            return Image.open(BytesIO(self.decompressed_array[self.delimeter[len(self.details)]+1:len(self.decompressed_array)]))
         else:
             return None
 
     def saveimage(self, filename):
         # Will save the image of user
         image = self.image()
+        image.load()
         image.save(filename)
 
     def verifyEmail(self, emailid):
