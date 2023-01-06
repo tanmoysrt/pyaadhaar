@@ -100,9 +100,24 @@ class AadhaarSecureQr:
                 self.decompressed_array)-256-32:len(self.decompressed_array)-256].hex()
         return tmp
 
+    def isImage(self, buffer = 10) -> bool:
+        # Will return bool for availability of image stream in the QR CODE
+        if int(self.data['email_mobile_status']) == 3:
+            if len(self.decompressed_array[self.delimeter[len(self.details)]+1:len(self.decompressed_array)]) < 256+32+32+buffer:
+                return False
+            else:
+                return True
+        elif int(self.data['email_mobile_status']) == 2 or int(self.data['email_mobile_status']) == 1:
+            if len(self.decompressed_array[self.delimeter[len(self.details)]+1:len(self.decompressed_array)]) < 256+32+buffer:
+                return False
+            else:
+                return True
+        elif int(self.data['email_mobile_status']) == 0:
+    
     def image(self):
         # Will return the image stream to be used in another function
         if int(self.data['email_mobile_status']) == 3:
+            print("length --> ", len(self.decompressed_array[self.delimeter[len(self.details)]+1:len(self.decompressed_array)]))
             return Image.open(BytesIO(self.decompressed_array[self.delimeter[len(self.details)]+1:len(self.decompressed_array)]))
         elif int(self.data['email_mobile_status']) == 2 or int(self.data['email_mobile_status']) == 1:
             return Image.open(BytesIO(self.decompressed_array[self.delimeter[len(self.details)]+1:len(self.decompressed_array)]))
