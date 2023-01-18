@@ -1,6 +1,7 @@
 import zlib
 from io import BytesIO
-from PIL import Image
+from PIL import Image, ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 import xml.etree.ElementTree as ET
 from io import BytesIO
 import base64
@@ -17,7 +18,7 @@ class AadhaarSecureQr:
     def __init__(self, base10encodedstring):
         self.base10encodedstring = base10encodedstring
         self.details = ["version","email_mobile_status","referenceid", "name", "dob", "gender", "careof", "district", "landmark",
-                        "house", "location", "pincode", "postoffice", "state", "street", "subdistrict", "vtc"]
+                        "house", "location", "pincode", "postoffice", "state", "street", "subdistrict", "vtc", "last_4_digits_mobile_no"]
         self.delimeter = [-1]
         self.data = {}
         self._convert_base10encoded_to_decompressed_array()
@@ -34,9 +35,9 @@ class AadhaarSecureQr:
     def _check_aadhaar_version(self):
         # This function will check for the new 2022 version-2 Aadhaar QRs
         # If not found it will remove the "version" key from self.details, Defaulting to normal Secure QRs
-        if not self.decompressed_array[0:2].decode("ISO-8859-1") == 'V2':
-            self.details.pop(0)
-
+        if self.decompressed_array[:2].decode("ISO-8859-1") != 'V2':
+            self.details.pop(0) # Removing "Version"
+            self.details.pop() # Removing "Last_4_digits_of_mobile_no"
     def _create_delimeter(self):
         # This function creates the delimeter which is used to extract the information from the decompressed array
         for i in range(len(self.decompressed_array)):
@@ -46,15 +47,15 @@ class AadhaarSecureQr:
     def _extract_info_from_decompressed_array(self):
         for i in range(len(self.details)):
             self.data[self.details[i]] = self.decompressed_array[self.delimeter[i] + 1:self.delimeter[i+1]].decode("ISO-8859-1")
-        self.data['adhaar_last_4_digit'] = self.data['referenceid'][0:4]
+        self.data['adhaar_last_4_digit'] = self.data['referenceid'][:4]
         self.data['adhaar_last_digit'] = self.data['referenceid'][3]
         # Default values to 'email' and 'mobile
         self.data['email'] = False
         self.data['mobile'] = False
         # Updating the fields of 'email' and 'mobile'
-        if int(self.data['email_mobile_status']) == 3 or int(self.data['email_mobile_status']) == 1:
+        if int(self.data['email_mobile_status']) in {3, 1}:
             self.data['email'] = True
-        if int(self.data['email_mobile_status']) == 3 or int(self.data['email_mobile_status']) == 2:
+        if int(self.data['email_mobile_status']) in {3, 2}:
             self.data['mobile'] = True
 
     def decodeddata(self):
@@ -62,15 +63,10 @@ class AadhaarSecureQr:
         return self.data
 
     def signature(self):
-        # Will return the signature value
-        signature = self.decompressed_array[len(
-            self.decompressed_array)-256:len(self.decompressed_array)]
-        return signature
+        return self.decompressed_array[len(self.decompressed_array) - 256 :]
 
     def signedData(self):
-        # Will return the signed data
-        signeddata = self.decompressed_array[:len(self.decompressed_array)-256]
-        return signeddata
+        return self.decompressed_array[:len(self.decompressed_array)-256]
 
     def isMobileNoRegistered(self):
         # Will return True if mobile number is registered
@@ -86,52 +82,99 @@ class AadhaarSecureQr:
         if int(self.data['email_mobile_status']) == 3:
             tmp = self.decompressed_array[len(
                 self.decompressed_array)-256-32-32:len(self.decompressed_array)-256-32].hex()
-        elif int(self.data['email_mobile_status']) == 2:
+        elif int(self.data['email_mobile_status']) == 1:
             tmp = self.decompressed_array[len(
                 self.decompressed_array)-256-32:len(self.decompressed_array)-256].hex()
         return tmp
 
     def sha256hashOfMobileNumber(self):
-        # Will return the hash of mobile number
-        tmp = ""
-        if int(self.data['email_mobile_status']) == 3 or int(self.data['email_mobile_status']) == 1:
-            tmp = self.decompressed_array[len(
-                self.decompressed_array)-256-32:len(self.decompressed_array)-256].hex()
-        return tmp
+        return (
+            self.decompressed_array[
+                len(self.decompressed_array)
+                - 256
+                - 32 : len(self.decompressed_array)
+                - 256
+            ].hex()
+            if int(self.data['email_mobile_status']) in {3, 2}
+            else ""
+        )
 
+    def isImage(self, buffer = 10) -> bool:
+        # Will return bool for availability of image stream in the QR CODE
+        if int(self.data['email_mobile_status']) == 3:
+            return (
+                len(
+                    self.decompressed_array[
+                        self.delimeter[len(self.details)] + 1 :
+                    ]
+                )
+                >= 256 + 32 + 32 + buffer
+            )
+        elif int(self.data['email_mobile_status']) in {2, 1}:
+            return (
+                len(
+                    self.decompressed_array[
+                        self.delimeter[len(self.details)] + 1 :
+                    ]
+                )
+                >= 256 + 32 + buffer
+            )
+        elif int(self.data['email_mobile_status']) == 0:
+            return (
+                len(
+                    self.decompressed_array[
+                        self.delimeter[len(self.details)] + 1 :
+                    ]
+                )
+                >= 256 + buffer
+            )
+            
     def image(self):
         # Will return the image stream to be used in another function
         if int(self.data['email_mobile_status']) == 3:
-            return Image.open(BytesIO(self.decompressed_array[self.delimeter[15]+1:len(self.decompressed_array)-256-32-32]))
-        elif int(self.data['email_mobile_status']) == 2 or int(self.data['email_mobile_status']) == 1:
-            return Image.open(BytesIO(self.decompressed_array[self.delimeter[15]+1:len(self.decompressed_array)-256-32]))
+            return Image.open(
+                BytesIO(
+                    self.decompressed_array[
+                        self.delimeter[len(self.details)] + 1 :
+                    ]
+                )
+            )
+        elif int(self.data['email_mobile_status']) in {2, 1}:
+            return Image.open(
+                BytesIO(
+                    self.decompressed_array[
+                        self.delimeter[len(self.details)] + 1 :
+                    ]
+                )
+            )
         elif int(self.data['email_mobile_status']) == 0:
-            return Image.open(BytesIO(self.decompressed_array[self.delimeter[15]+1:len(self.decompressed_array)-256]))
+            return Image.open(
+                BytesIO(
+                    self.decompressed_array[
+                        self.delimeter[len(self.details)] + 1 :
+                    ]
+                )
+            )
         else:
             return None
 
     def saveimage(self, filename):
         # Will save the image of user
         image = self.image()
+        image.load()
         image.save(filename)
 
     def verifyEmail(self, emailid):
         # Will return True if emailid match with the given email id
         generated_sha_mail = pyaadhaar.utils.SHAGenerator(
             emailid, self.data['adhaar_last_digit'])
-        if generated_sha_mail == self.sha256hashOfEMail():
-            return True
-        else:
-            return False
+        return generated_sha_mail == self.sha256hashOfEMail()
 
     def verifyMobileNumber(self, mobileno):
         # Will return True if mobileno match with the given mobile no
         generated_sha_mobile = pyaadhaar.utils.SHAGenerator(
             mobileno, self.data['adhaar_last_digit'])
-        if generated_sha_mobile == self.sha256hashOfMobileNumber():
-            return True
-        else:
-            return False
+        return generated_sha_mobile == self.sha256hashOfMobileNumber()
 
 
 class AadhaarOldQr:
