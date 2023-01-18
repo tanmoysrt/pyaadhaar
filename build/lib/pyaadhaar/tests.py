@@ -3,9 +3,8 @@ from pyzbar.pyzbar import decode
 from decode import AadhaarSecureQr
 
 filename = '/home/arkajit/Documents/Projects/pyaadhaar_updated/test_files/Test_Aadhar_Arkajit.pdf'
-filename1 = "/home/arkajit/Documents/Projects/pyaadhaar_updated/test_files/PraveenK_Aadhaar.pdf"
 working_file = '/home/arkajit/Downloads/new_aadhaar_pvc_4.pdf'
-pages = convert_from_path(filename1)
+pages = convert_from_path(filename)
 
 scale = 2
 extracted_info = []
@@ -22,5 +21,4 @@ print(extracted_fields)
 print(obj.signature())
 print("---------------------")
 print(obj.signedData())
-print(obj.isImage())
 obj.saveimage("/home/arkajit/Documents/Projects/pyaadhaar_updated/test_files/test.png")

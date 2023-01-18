@@ -72,6 +72,18 @@ True  # True if Email Registered
 False # True if Mobile Number Registered
 ```
 
+#### **`=> Get if there exists any image in the QR CODE`**
+
+```
+image = obj.isImage()
+```
+**Output :**
+
+```
+True  # True if Image is there
+False # False if Image is not there
+```
+
 #### **`=> Get The Image Of User`**
 
 ```
