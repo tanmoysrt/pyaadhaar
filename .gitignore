@@ -1,3 +1,5 @@
 /env/*
 .env/*
 venv
+**/test.py
+**/tests.py
