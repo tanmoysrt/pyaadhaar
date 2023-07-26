@@ -10,7 +10,7 @@ from typing import Union
 from . import utils
 
 class AadhaarSecureQr:
-    # This is the class for Adhaar Secure Qr code..  In this version of code the data is in encrypted format
+    # This is the class for Aadhaar Secure Qr code..  In this version of code the data is in encrypted format
     # The special thing of this type of QR is that we can extract the photo of user from the data
     # This class now supports 2022 version of Aadhaar QR codes [version-2]
     # For more information check here : https://103.57.226.101/images/resource/User_manulal_QR_Code_15032019.pdf
@@ -48,8 +48,8 @@ class AadhaarSecureQr:
     def _extract_info_from_decompressed_array(self) -> None:
         for i in range(len(self.details)):
             self.data[self.details[i]] = self.decompressed_array[self.delimeter[i] + 1:self.delimeter[i+1]].decode("ISO-8859-1")
-        self.data['adhaar_last_4_digit'] = self.data['referenceid'][:4]
-        self.data['adhaar_last_digit'] = self.data['referenceid'][3]
+        self.data['aadhaar_last_4_digit'] = self.data['referenceid'][:4]
+        self.data['aadhaar_last_digit'] = self.data['referenceid'][3]
         # Default values to 'email' and 'mobile
         self.data['email'] = False
         self.data['mobile'] = False
@@ -170,19 +170,19 @@ class AadhaarSecureQr:
     def verifyEmail(self, emailid:str) -> bool:
         if type(emailid) != str:
             raise TypeError("Email id should be string")
-        generated_sha_mail = utils.SHAGenerator(emailid, self.data['adhaar_last_digit'])
+        generated_sha_mail = utils.SHAGenerator(emailid, self.data['aadhaar_last_digit'])
         return generated_sha_mail == self.sha256hashOfEMail()
 
     # Verify the mobile no  
     def verifyMobileNumber(self, mobileno:str) -> bool:
         if type(mobileno) != str:
             raise TypeError("Mobile number should be string")
-        generated_sha_mobile = utils.SHAGenerator(mobileno, self.data['adhaar_last_digit'])
+        generated_sha_mobile = utils.SHAGenerator(mobileno, self.data['aadhaar_last_digit'])
         return generated_sha_mobile == self.sha256hashOfMobileNumber()
 
 
 class AadhaarOldQr:
-    # This is the class for Adhaar Normal Qr code..  In this version of code the data is in XML v1.0 format
+    # This is the class for Aadhaar Normal Qr code..  In this version of code the data is in XML v1.0 format
     # For more information check here : https://103.57.226.101/images/resource/User_manulal_QR_Code_15032019.pdf
 
     def __init__(self, qrdata) -> None:
@@ -198,7 +198,7 @@ class AadhaarOldQr:
 
 class AadhaarOfflineXML:
 
-    # This is the class for Adhaar Offline XML
+    # This is the class for Aadhaar Offline XML
     # The special thing of Offline XML is that we can extract the high quality photo of user from the data
     # For more information check here : https://103.57.226.101/images/resource/User_manulal_QR_Code_15032019.pdf
 
@@ -240,8 +240,8 @@ class AadhaarOfflineXML:
         self.data['street'] = self.root[0][1].attrib['street']
         self.data['subdistrict'] = self.root[0][1].attrib['subdist']
         self.data['vtc'] = self.root[0][1].attrib['vtc']
-        self.data['adhaar_last_4_digit'] = self.data['referenceid'][0:4]
-        self.data['adhaar_last_digit'] = self.data['referenceid'][3]
+        self.data['aadhaar_last_4_digit'] = self.data['referenceid'][0:4]
+        self.data['aadhaar_last_digit'] = self.data['referenceid'][3]
 
         if self.data['email_mobile_status'] == "0":
             self.data['email'] = False
@@ -305,7 +305,7 @@ class AadhaarOfflineXML:
     def verifyEmail(self, emailid:str) -> bool:
         # Will return True if emailid match with the given email id
         generated_sha_mail = utils.SHAGenerator(
-            str(emailid)+str(self.passcode), self.data['adhaar_last_digit'])
+            str(emailid)+str(self.passcode), self.data['aadhaar_last_digit'])
         if generated_sha_mail == self.sha256hashOfEMail():
             return True
         else:
@@ -314,7 +314,7 @@ class AadhaarOfflineXML:
     # Verify the mobile number
     def verifyMobileNumber(self, mobileno:str) -> bool:
         # Will return True if mobileno match with the given mobile no
-        generated_sha_mobile = utils.SHAGenerator(str(mobileno)+str(self.passcode), self.data['adhaar_last_digit'])
+        generated_sha_mobile = utils.SHAGenerator(str(mobileno)+str(self.passcode), self.data['aadhaar_last_digit'])
         if generated_sha_mobile == self.sha256hashOfMobileNumber():
             return True
         else:
