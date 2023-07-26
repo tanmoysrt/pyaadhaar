@@ -7,6 +7,7 @@ from io import BytesIO
 import base64
 import zipfile
 import pyaadhaar
+from typing import Union
 
 
 class AadhaarSecureQr:
@@ -15,7 +16,7 @@ class AadhaarSecureQr:
     # This class now supports 2022 version of Aadhaar QR codes [version-2]
     # For more information check here : https://103.57.226.101/images/resource/User_manulal_QR_Code_15032019.pdf
 
-    def __init__(self, base10encodedstring):
+    def __init__(self, base10encodedstring:str) -> None:
         self.base10encodedstring = base10encodedstring
         self.details = ["version","email_mobile_status","referenceid", "name", "dob", "gender", "careof", "district", "landmark",
                         "house", "location", "pincode", "postoffice", "state", "street", "subdistrict", "vtc", "last_4_digits_mobile_no"]
@@ -26,25 +27,26 @@ class AadhaarSecureQr:
         self._create_delimeter()
         self._extract_info_from_decompressed_array()
 
-    def _convert_base10encoded_to_decompressed_array(self):
-        # This function converts base10encoded string to a decompressed array
+    # Converts base10encoded string to a decompressed array
+    def _convert_base10encoded_to_decompressed_array(self) -> None:
         bytes_array = self.base10encodedstring.to_bytes(5000, 'big').lstrip(b'\x00')
-        self.decompressed_array = zlib.decompress(
-            bytes_array, 16+zlib.MAX_WBITS)
+        self.decompressed_array = zlib.decompress(bytes_array, 16+zlib.MAX_WBITS)
 
-    def _check_aadhaar_version(self):
-        # This function will check for the new 2022 version-2 Aadhaar QRs
-        # If not found it will remove the "version" key from self.details, Defaulting to normal Secure QRs
+    # This function will check for the new 2022 version-2 Aadhaar QRs
+    # If not found it will remove the "version" key from self.details, Defaulting to normal Secure QRs
+    def _check_aadhaar_version(self) -> None:
         if self.decompressed_array[:2].decode("ISO-8859-1") != 'V2':
             self.details.pop(0) # Removing "Version"
             self.details.pop() # Removing "Last_4_digits_of_mobile_no"
-    def _create_delimeter(self):
-        # This function creates the delimeter which is used to extract the information from the decompressed array
+
+    # Creates the delimeter which is used to extract the information from the decompressed array
+    def _create_delimeter(self) -> None:
         for i in range(len(self.decompressed_array)):
             if self.decompressed_array[i] == 255:
                 self.delimeter.append(i)
 
-    def _extract_info_from_decompressed_array(self):
+    # Extracts the information from the decompressed array
+    def _extract_info_from_decompressed_array(self) -> None:
         for i in range(len(self.details)):
             self.data[self.details[i]] = self.decompressed_array[self.delimeter[i] + 1:self.delimeter[i+1]].decode("ISO-8859-1")
         self.data['adhaar_last_4_digit'] = self.data['referenceid'][:4]
@@ -58,36 +60,37 @@ class AadhaarSecureQr:
         if int(self.data['email_mobile_status']) in {3, 2}:
             self.data['mobile'] = True
 
-    def decodeddata(self):
-        # Will return the personal data in a dictionary format
+    # Returns the extracted data in a dictionary format
+    def decodeddata(self) -> dict:
         return self.data
 
-    def signature(self):
+    # Returns signature of the QR code
+    def signature(self) -> bytes:
         return self.decompressed_array[len(self.decompressed_array) - 256 :]
 
-    def signedData(self):
+    # Returns the signed data of the QR code
+    def signedData(self) -> bytes:
         return self.decompressed_array[:len(self.decompressed_array)-256]
 
-    def isMobileNoRegistered(self):
-        # Will return True if mobile number is registered
+    # Check whether mobile no is registered or not
+    def isMobileNoRegistered(self) -> bool:
         return self.data['mobile']
 
-    def isEmailRegistered(self):
-        # Will return True if email id is registered
+    # Check whether email id is registered or not
+    def isEmailRegistered(self) -> bool:
         return self.data['email']
 
-    def sha256hashOfEMail(self):
-        # Will return the hash of the email id
+    # Return hash of the email id
+    def sha256hashOfEMail(self) -> str:
         tmp = ""
         if int(self.data['email_mobile_status']) == 3:
-            tmp = self.decompressed_array[len(
-                self.decompressed_array)-256-32-32:len(self.decompressed_array)-256-32].hex()
+            tmp = self.decompressed_array[len(self.decompressed_array)-256-32-32:len(self.decompressed_array)-256-32].hex()
         elif int(self.data['email_mobile_status']) == 1:
-            tmp = self.decompressed_array[len(
-                self.decompressed_array)-256-32:len(self.decompressed_array)-256].hex()
+            tmp = self.decompressed_array[len(self.decompressed_array)-256-32:len(self.decompressed_array)-256].hex()
         return tmp
 
-    def sha256hashOfMobileNumber(self):
+    # Return hash of the mobile number
+    def sha256hashOfMobileNumber(self) -> str:
         return (
             self.decompressed_array[
                 len(self.decompressed_array)
@@ -99,8 +102,8 @@ class AadhaarSecureQr:
             else ""
         )
 
+    # Check availability of image in the QR CODE
     def isImage(self, buffer = 10) -> bool:
-        # Will return bool for availability of image stream in the QR CODE
         if int(self.data['email_mobile_status']) == 3:
             return (
                 len(
@@ -128,9 +131,9 @@ class AadhaarSecureQr:
                 )
                 >= 256 + buffer
             )
-            
-    def image(self):
-        # Will return the image stream to be used in another function
+    
+    # Return image stream
+    def image(self) -> Union[Image.Image,None]:
         if int(self.data['email_mobile_status']) == 3:
             return Image.open(
                 BytesIO(
@@ -158,22 +161,24 @@ class AadhaarSecureQr:
         else:
             return None
 
-    def saveimage(self, filename):
-        # Will save the image of user
+    # Save the image of the user
+    def saveimage(self, filepath:str) -> None:
         image = self.image()
         image.load()
-        image.save(filename)
+        image.save(filepath)
 
-    def verifyEmail(self, emailid):
-        # Will return True if emailid match with the given email id
-        generated_sha_mail = pyaadhaar.utils.SHAGenerator(
-            emailid, self.data['adhaar_last_digit'])
+    # Verify the email id
+    def verifyEmail(self, emailid:str) -> bool:
+        if type(emailid) != str:
+            raise TypeError("Email id should be string")
+        generated_sha_mail = pyaadhaar.utils.SHAGenerator(emailid, self.data['adhaar_last_digit'])
         return generated_sha_mail == self.sha256hashOfEMail()
 
-    def verifyMobileNumber(self, mobileno):
-        # Will return True if mobileno match with the given mobile no
-        generated_sha_mobile = pyaadhaar.utils.SHAGenerator(
-            mobileno, self.data['adhaar_last_digit'])
+    # Verify the mobile no  
+    def verifyMobileNumber(self, mobileno:str) -> bool:
+        if type(mobileno) != str:
+            raise TypeError("Mobile number should be string")
+        generated_sha_mobile = pyaadhaar.utils.SHAGenerator(mobileno, self.data['adhaar_last_digit'])
         return generated_sha_mobile == self.sha256hashOfMobileNumber()
 
 
@@ -181,13 +186,13 @@ class AadhaarOldQr:
     # This is the class for Adhaar Normal Qr code..  In this version of code the data is in XML v1.0 format
     # For more information check here : https://103.57.226.101/images/resource/User_manulal_QR_Code_15032019.pdf
 
-    def __init__(self, qrdata):
+    def __init__(self, qrdata) -> None:
         self.qrdata = qrdata
         self.xmlparser = ET.XMLParser(encoding="utf-8")
         self.parsedxml = ET.fromstring(qrdata, parser=self.xmlparser)
         self.data = self.parsedxml.attrib
 
-    def decodeddata(self):
+    def decodeddata(self) -> dict:
         # Will return the decoded datas inn dictionary format
         return self.data
 
@@ -198,7 +203,7 @@ class AadhaarOfflineXML:
     # The special thing of Offline XML is that we can extract the high quality photo of user from the data
     # For more information check here : https://103.57.226.101/images/resource/User_manulal_QR_Code_15032019.pdf
 
-    def __init__(self, file, passcode):
+    def __init__(self, file:str, passcode:str) -> None:
         # Need to pass the zip file and passcode/sharecode to this function
         self.passcode = passcode
         self.data = {}
@@ -240,58 +245,65 @@ class AadhaarOfflineXML:
         self.data['adhaar_last_digit'] = self.data['referenceid'][3]
 
         if self.data['email_mobile_status'] == "0":
-            self.data['email'] = "no"
-            self.data['mobile'] = "no"
+            self.data['email'] = False
+            self.data['mobile'] = False
         elif self.data['email_mobile_status'] == "1":
-            self.data['email'] = "yes"
-            self.data['mobile'] = "no"
+            self.data['email'] = True
+            self.data['mobile'] = False
         elif self.data['email_mobile_status'] == "2":
-            self.data['email'] = "no"
-            self.data['mobile'] = "yes"
+            self.data['email'] = False
+            self.data['mobile'] = True
         elif self.data['email_mobile_status'] == "3":
-            self.data['email'] = "yes"
-            self.data['mobile'] = "yes"
+            self.data['email'] = True
+            self.data['mobile'] = True
 
-    def decodeddata(self):
-        # Will return data in dictionary format
+    # Get decoded data in dictionary format
+    def decodeddata(self) -> dict:
         return self.data
 
-    def signature(self):
-        # Will return the signature
+    # Fetch signature
+    def signature(self) -> str:
         return self.root[1][1].text
 
-    def isMobileNoRegistered(self):
+    # Check if mobile number is registered
+    def isMobileNoRegistered(self) -> bool:
         # Will return True if mobile number is registered
         if int(self.data['email_mobile_status']) == 3 or int(self.data['email_mobile_status']) == 1:
             return True
         return False
 
-    def isEmailRegistered(self):
+    # Check if email id is registered
+    def isEmailRegistered(self) -> bool:
         # Will return True if email id is registered
         if int(self.data['email_mobile_status']) == 3 or int(self.data['email_mobile_status']) == 2:
             return True
         return False
 
-    def sha256hashOfEMail(self):
+    # Get the hash of email id
+    def sha256hashOfEMail(self) -> str:
         # Will return the hash of the email id
         return self.hashofemail
 
-    def sha256hashOfMobileNumber(self):
+    # Get the hash of mobile number
+    def sha256hashOfMobileNumber(self) -> str:
         # Will return the hash of mobile number
         return self.hashofmobile
 
-    def image(self):
+    # Get the image of user
+    def image(self) -> Image.Image:
         # Will return the image stream to be used in another function
         img = self.root[0][2].text
         img = Image.open(BytesIO(base64.b64decode(img)))
         return img
 
-    def saveimage(self, filename):
+    # Save the image of user
+    def saveimage(self, filepath:str) -> None:
         # Will save the image of user
         image = self.image()
-        image.save(filename)
+        image.save(filepath)
 
-    def verifyEmail(self, emailid):
+    # Verify the email id
+    def verifyEmail(self, emailid:str) -> bool:
         # Will return True if emailid match with the given email id
         generated_sha_mail = pyaadhaar.utils.SHAGenerator(
             str(emailid)+str(self.passcode), self.data['adhaar_last_digit'])
@@ -300,12 +312,11 @@ class AadhaarOfflineXML:
         else:
             return False
 
-    def verifyMobileNumber(self, mobileno):
+    # Verify the mobile number
+    def verifyMobileNumber(self, mobileno:str) -> bool:
         # Will return True if mobileno match with the given mobile no
-        generated_sha_mobile = pyaadhaar.utils.SHAGenerator(
-            str(mobileno)+str(self.passcode), self.data['adhaar_last_digit'])
+        generated_sha_mobile = pyaadhaar.utils.SHAGenerator(str(mobileno)+str(self.passcode), self.data['adhaar_last_digit'])
         if generated_sha_mobile == self.sha256hashOfMobileNumber():
             return True
         else:
             return False
-

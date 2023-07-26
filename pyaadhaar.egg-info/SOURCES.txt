@@ -1,7 +1,7 @@
 setup.py
 pyaadhaar/__init__.py
 pyaadhaar/decode.py
-pyaadhaar/tests.py
+pyaadhaar/test.py
 pyaadhaar/utils.py
 pyaadhaar.egg-info/PKG-INFO
 pyaadhaar.egg-info/SOURCES.txt

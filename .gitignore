@@ -1,2 +1,8 @@
 /env/*
 .env/*
+venv
+**/test.py
+**/tests.py
+**/__pycache__
+__pycache__
+build
