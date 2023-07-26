@@ -6,9 +6,8 @@ import xml.etree.ElementTree as ET
 from io import BytesIO
 import base64
 import zipfile
-import pyaadhaar
 from typing import Union
-
+from . import utils
 
 class AadhaarSecureQr:
     # This is the class for Adhaar Secure Qr code..  In this version of code the data is in encrypted format
@@ -171,14 +170,14 @@ class AadhaarSecureQr:
     def verifyEmail(self, emailid:str) -> bool:
         if type(emailid) != str:
             raise TypeError("Email id should be string")
-        generated_sha_mail = pyaadhaar.utils.SHAGenerator(emailid, self.data['adhaar_last_digit'])
+        generated_sha_mail = utils.SHAGenerator(emailid, self.data['adhaar_last_digit'])
         return generated_sha_mail == self.sha256hashOfEMail()
 
     # Verify the mobile no  
     def verifyMobileNumber(self, mobileno:str) -> bool:
         if type(mobileno) != str:
             raise TypeError("Mobile number should be string")
-        generated_sha_mobile = pyaadhaar.utils.SHAGenerator(mobileno, self.data['adhaar_last_digit'])
+        generated_sha_mobile = utils.SHAGenerator(mobileno, self.data['adhaar_last_digit'])
         return generated_sha_mobile == self.sha256hashOfMobileNumber()
 
 
@@ -305,7 +304,7 @@ class AadhaarOfflineXML:
     # Verify the email id
     def verifyEmail(self, emailid:str) -> bool:
         # Will return True if emailid match with the given email id
-        generated_sha_mail = pyaadhaar.utils.SHAGenerator(
+        generated_sha_mail = utils.SHAGenerator(
             str(emailid)+str(self.passcode), self.data['adhaar_last_digit'])
         if generated_sha_mail == self.sha256hashOfEMail():
             return True
@@ -315,7 +314,7 @@ class AadhaarOfflineXML:
     # Verify the mobile number
     def verifyMobileNumber(self, mobileno:str) -> bool:
         # Will return True if mobileno match with the given mobile no
-        generated_sha_mobile = pyaadhaar.utils.SHAGenerator(str(mobileno)+str(self.passcode), self.data['adhaar_last_digit'])
+        generated_sha_mobile = utils.SHAGenerator(str(mobileno)+str(self.passcode), self.data['adhaar_last_digit'])
         if generated_sha_mobile == self.sha256hashOfMobileNumber():
             return True
         else:
