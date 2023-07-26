@@ -5,3 +5,4 @@ venv
 **/tests.py
 **/__pycache__
 __pycache__
+build
