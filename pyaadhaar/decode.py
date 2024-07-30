@@ -9,6 +9,10 @@ from typing import Union
 from pyaadhaar import utils
 
 class AadhaarSecureQr:
+      # This is the class for Aadhaar Secure Qr code..  In this version of code the data is in encrypted format
+    # The special thing of this type of QR is that we can extract the photo of user from the data
+    # This class now supports 2022 version of Aadhaar QR codes [version-2]
+    # For more information check here : https://103.57.226.101/images/resource/User_manulal_QR_Code_15032019.pdf
     def __init__(self, base10encodedstring: str) -> None:
         self.base10encodedstring = base10encodedstring
         self.details_v1 = ["version", "email_mobile_status", "referenceid", "name", "dob", "gender", "careof", "district", "landmark",
@@ -22,6 +26,7 @@ class AadhaarSecureQr:
         self._create_delimiter()
         self._extract_info_from_decompressed_array()
 
+    # Converts base10encoded string to a decompressed array
     def _convert_base10encoded_to_decompressed_array(self) -> None:
         bytes_array = self.base10encodedstring.to_bytes(5000, 'big').lstrip(b'\x00')
         print(f"Bytes array (trimmed leading zeros): {bytes_array[:100]}")  # Debugging: print the first 100 bytes
@@ -42,12 +47,14 @@ class AadhaarSecureQr:
             # Version is not present, use the details list without version
             self.details = self.details_v2
 
+    # Creates the delimeter which is used to extract the information from the decompressed array
     def _create_delimiter(self) -> None:
         for i in range(len(self.decompressed_array)):
             if self.decompressed_array[i] == 255:
                 self.delimiter.append(i)
         print(f"Delimiters: {self.delimiter}")
 
+    # Extracts the information from the decompressed array
     def _extract_info_from_decompressed_array(self) -> None:
         for i in range(len(self.details)):
             if i + 1 < len(self.delimiter):
@@ -75,21 +82,27 @@ class AadhaarSecureQr:
             if email_mobile_status in {3, 2}:
                 self.data['mobile'] = True
 
+    # Returns the extracted data in a dictionary format
     def decodeddata(self) -> dict:
         return self.data
-
+ 
+    # Returns signature of the QR code
     def signature(self) -> bytes:
         return self.decompressed_array[len(self.decompressed_array) - 256:]
 
+
+    # Returns the signed data of the QR code
     def signedData(self) -> bytes:
         return self.decompressed_array[:len(self.decompressed_array) - 256]
-
+ 
+    # Check whether mobile no is registered or not
     def isMobileNoRegistered(self) -> bool:
         return self.data['mobile']
-
+ 
+    # Check whether email id is registered or not
     def isEmailRegistered(self) -> bool:
         return self.data['email']
-
+    # Return hash of the email id
     def sha256hashOfEMail(self) -> str:
         tmp = ""
         email_mobile_status = self.data.get('email_mobile_status', '')
@@ -98,13 +111,14 @@ class AadhaarSecureQr:
         elif email_mobile_status.isdigit() and int(email_mobile_status) == 1:
             tmp = self.decompressed_array[len(self.decompressed_array) - 256 - 32:len(self.decompressed_array) - 256].hex()
         return tmp
-
+    # Return hash of the mobile number
     def sha256hashOfMobileNumber(self) -> str:
         email_mobile_status = self.data.get('email_mobile_status', '')
         if email_mobile_status.isdigit() and int(email_mobile_status) in {3, 2}:
             return self.decompressed_array[len(self.decompressed_array) - 256 - 32: len(self.decompressed_array) - 256].hex()
         return ""
 
+    # Check availability of image in the QR CODE
     def isImage(self, buffer=10) -> bool:
         email_mobile_status = self.data.get('email_mobile_status', '')
         if email_mobile_status.isdigit():
@@ -115,13 +129,13 @@ class AadhaarSecureQr:
             elif int(email_mobile_status) == 0:
                 return len(self.decompressed_array[self.delimiter[len(self.details)] + 1:]) >= 256 + buffer
         return False
-
+    # Return image stream
     def image(self) -> Union[Image.Image, None]:
         email_mobile_status = self.data.get('email_mobile_status', '')
         if email_mobile_status.isdigit() and int(email_mobile_status) in {0, 1, 2, 3}:
             return Image.open(BytesIO(self.decompressed_array[self.delimiter[len(self.details)] + 1:]))
         return None
-
+    # Save the image of the user
     def saveimage(self, filepath: str) -> None:
         image = self.image()
         if image:
@@ -130,6 +144,20 @@ class AadhaarSecureQr:
             
     def contains_image(self) -> bool:
         return self.isImage()
+    
+    # Verify the email id
+    def verifyEmail(self, emailid:str) -> bool:
+        if type(emailid) != str:
+            raise TypeError("Email id should be string")
+        generated_sha_mail = utils.SHAGenerator(emailid, self.data['aadhaar_last_digit'])
+        return generated_sha_mail == self.sha256hashOfEMail()
+
+    # Verify the mobile no  
+    def verifyMobileNumber(self, mobileno:str) -> bool:
+        if type(mobileno) != str:
+            raise TypeError("Mobile number should be string")
+        generated_sha_mobile = utils.SHAGenerator(mobileno, self.data['aadhaar_last_digit'])
+        return generated_sha_mobile == self.sha256hashOfMobileNumber()
     
 
 class AadhaarOldQr:
