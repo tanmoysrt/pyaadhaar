@@ -80,9 +80,9 @@ class AadhaarSecureQr:
         self.data['mobile'] = False
         # Updating the fields of 'email' and 'mobile'
         email_mobile_status = int(self.data.get('email_mobile_status', -1))
-        if email_mobile_status in {3, 1}:
-            self.data['email'] = True
         if email_mobile_status in {3, 2}:
+            self.data['email'] = True
+        if email_mobile_status in {3, 1}:
             self.data['mobile'] = True
 
     # Returns the extracted data in a dictionary format
@@ -97,7 +97,7 @@ class AadhaarSecureQr:
     def signedData(self) -> bytes:
         return self.decompressed_array[:len(self.decompressed_array)-256]
 
-    def verify_signature(self, cert_file_path: str = 'pyaadhaar/uidai_publickey.pem') -> bool:
+    def verify_signature(self, cert_file_path:str = 'pyaadhaar/uidai_publickey.pem') -> bool:
         """
         Verifies the signature of the Aadhaar Secure QR code.
         From Secure QR documentation (User_manulal_QR_Code_15032019.pdf):
@@ -147,13 +147,12 @@ class AadhaarSecureQr:
     # Email and Mobile value will available in byte. Convert into Hexadecimal String
     def sha256hashOfEMail(self) -> str:
         tmp = ""
-        email_mobile_status = int(self.data.get('email_mobile_status', -1))
 
-        if email_mobile_status == 3:
+        if self.isEmailRegistered() and self.isMobileNoRegistered():
             start_idx = len(self.decompressed_array)-256-32-32
             end_idx = len(self.decompressed_array)-256-32
             tmp = self.decompressed_array[start_idx : end_idx].hex()
-        elif email_mobile_status == 2:
+        elif self.isEmailRegistered() and not self.isMobileNoRegistered():
             start_idx = len(self.decompressed_array)-256-32
             end_idx = len(self.decompressed_array)-256
             tmp = self.decompressed_array[start_idx : end_idx].hex()
@@ -163,9 +162,8 @@ class AadhaarSecureQr:
     # Return hash of the mobile number
     def sha256hashOfMobileNumber(self) -> str:
         tmp = ""
-        email_mobile_status = int(self.data.get('email_mobile_status', -1))
 
-        if email_mobile_status in {3, 1}:
+        if self.isMobileNoRegistered():
             start_idx = len(self.decompressed_array)-256-32
             end_idx = len(self.decompressed_array)-256
             tmp = self.decompressed_array[start_idx : end_idx].hex()
@@ -174,46 +172,28 @@ class AadhaarSecureQr:
 
     # Check availability of image in the QR CODE
     def isImage(self, buffer = 10) -> bool:
-        if int(self.data['email_mobile_status']) == 3:
-            return (
-                len(
-                    self.decompressed_array[
-                        self.delimiter[len(self.details)] + 1 :
-                    ]
-                )
-                >= 256 + 32 + 32 + buffer
-            )
-        elif int(self.data['email_mobile_status']) in {2, 1}:
-            return (
-                len(
-                    self.decompressed_array[
-                        self.delimiter[len(self.details)] + 1 :
-                    ]
-                )
-                >= 256 + 32 + buffer
-            )
-        elif int(self.data['email_mobile_status']) == 0:
-            return (
-                len(
-                    self.decompressed_array[
-                        self.delimiter[len(self.details)] + 1 :
-                    ]
-                )
-                >= 256 + buffer
-            )
+        num_aadhaar_props = len(self.details)
+        start_idx = self.delimiter[num_aadhaar_props] + 1
+        len_image_bytes = len(self.decompressed_array[start_idx :])
+
+        if self.isEmailRegistered() and self.isMobileNoRegistered():
+            return (len_image_bytes >= (256 + 32 + 32 + buffer))
+        elif self.isEmailRegistered() or self.isMobileNoRegistered():
+            return (len_image_bytes >= (256 + 32 + buffer))
+        elif not self.isEmailRegistered() and not self.isMobileNoRegistered():
+            return (len_image_bytes >= (256 + buffer))
 
     # Return image stream
-    def image(self, format='img') -> Union[Image.Image,None]:
-        email_mobile_status = int(self.data.get('email_mobile_status', -1))
+    def image(self, format:str = 'img') -> Union[Image.Image,None]:
         image_byte_data = None
         num_aadhaar_props = len(self.details)
         start_idx = self.delimiter[num_aadhaar_props] + 1
 
-        if email_mobile_status == 3:
+        if self.isEmailRegistered() and self.isMobileNoRegistered():
             image_byte_data = self.decompressed_array[start_idx : ]
-        elif email_mobile_status in {2, 1}:
+        elif self.isEmailRegistered() or self.isMobileNoRegistered():
             image_byte_data = self.decompressed_array[start_idx : ]
-        elif email_mobile_status == 0:
+        elif not self.isEmailRegistered() and not self.isMobileNoRegistered():
             image_byte_data = self.decompressed_array[start_idx : ]
         else:
             return None
