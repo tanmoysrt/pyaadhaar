@@ -7,6 +7,10 @@ import base64
 import zipfile
 from typing import Union
 from . import utils
+from Crypto.Signature import pkcs1_15
+from Crypto.Hash import SHA256
+from Crypto.PublicKey import RSA
+from Crypto.Util.number import long_to_bytes
 
 class AadhaarSecureQr:
     # This is the class for Aadhaar Secure Qr code..  In this version of code the data is in encrypted format
@@ -92,6 +96,34 @@ class AadhaarSecureQr:
     # Returns the signed data of the QR code
     def signedData(self) -> bytes:
         return self.decompressed_array[:len(self.decompressed_array)-256]
+
+    def verify_signature(self, cert_file_path: str = 'pyaadhaar/uidai_publickey.pem') -> bool:
+        """
+        Verifies the signature of the Aadhaar Secure QR code.
+        From Secure QR documentation (User_manulal_QR_Code_15032019.pdf):
+        Validate (signature value and signed data value) by using public key with algorithm SHA256withRSA.
+        The default public key is "pyaadhaar/uidai_publickey.pem", which is extracted from the certificate
+        present in the offline KYC XML (uidai_certificate_from_xml.cer).
+            > openssl x509 -inform PEM -in uidai_certificate_from_xml.cer -pubkey -noout > uidai_publickey.pem
+
+        Args:
+            cert_file_path (str, optional): The path to the certificate file. Defaults to 'pyaadhaar/uidai_publickey.pem'.
+
+        Returns:
+            bool: True if the signature is valid, False otherwise.
+        """
+        with open(cert_file_path, 'rb') as key_file:
+            public_key = RSA.import_key(key_file.read())
+
+        h = SHA256.new(self.signedData())
+        verifier = pkcs1_15.new(public_key)
+
+        try:
+            verifier.verify(h, self.signature())
+            return True
+        except (ValueError, TypeError) as e:
+            print(f"Signature verification failed: {e}")
+            return False
 
     # Check whether mobile no is registered or not
     def isMobileNoRegistered(self) -> bool:
