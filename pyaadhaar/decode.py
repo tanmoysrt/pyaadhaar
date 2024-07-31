@@ -3,7 +3,6 @@ from io import BytesIO
 from PIL import Image, ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 import xml.etree.ElementTree as ET
-from io import BytesIO
 import base64
 import zipfile
 from typing import Union
@@ -17,19 +16,26 @@ class AadhaarSecureQr:
 
     def __init__(self, base10encodedstring:str) -> None:
         self.base10encodedstring = base10encodedstring
-        self.details = ["version","email_mobile_status","referenceid", "name", "dob", "gender", "careof", "district", "landmark",
+        self.details = ["version", "email_mobile_status", "reference_id", "name", "dob", "gender", "careof", "district", "landmark",
                         "house", "location", "pincode", "postoffice", "state", "street", "subdistrict", "vtc", "last_4_digits_mobile_no"]
-        self.delimeter = [-1]
+        self.delimiter = [-1]
         self.data = {}
         self._convert_base10encoded_to_decompressed_array()
         self._check_aadhaar_version()
-        self._create_delimeter()
+        self._create_delimiter()
         self._extract_info_from_decompressed_array()
 
     # Converts base10encoded string to a decompressed array
     def _convert_base10encoded_to_decompressed_array(self) -> None:
         bytes_array = self.base10encodedstring.to_bytes(5000, 'big').lstrip(b'\x00')
-        self.decompressed_array = zlib.decompress(bytes_array, 16+zlib.MAX_WBITS)
+        # print(f"Bytes array (trimmed leading zeros): {bytes_array[:100]}")  # Debugging: print the first 100 bytes
+        try:
+            self.decompressed_array = zlib.decompress(bytes_array, 16 + zlib.MAX_WBITS)
+            # print(f"Decompressed array: {self.decompressed_array[:100]}")  # Debugging: print the first 100 bytes of decompressed array
+        except Exception as e:
+            print(f"Decompression error: {e}")
+            return
+
 
     # This function will check for the new 2022 version-2 Aadhaar QRs
     # If not found it will remove the "version" key from self.details, Defaulting to normal Secure QRs
@@ -39,24 +45,40 @@ class AadhaarSecureQr:
             self.details.pop() # Removing "Last_4_digits_of_mobile_no"
 
     # Creates the delimeter which is used to extract the information from the decompressed array
-    def _create_delimeter(self) -> None:
+    def _create_delimiter(self) -> None:
         for i in range(len(self.decompressed_array)):
             if self.decompressed_array[i] == 255:
-                self.delimeter.append(i)
+                self.delimiter.append(i)
+
+        print(f"Delimiters: {self.delimiter}")
+
 
     # Extracts the information from the decompressed array
     def _extract_info_from_decompressed_array(self) -> None:
         for i in range(len(self.details)):
-            self.data[self.details[i]] = self.decompressed_array[self.delimeter[i] + 1:self.delimeter[i+1]].decode("ISO-8859-1")
-        self.data['aadhaar_last_4_digit'] = self.data['referenceid'][:4]
-        self.data['aadhaar_last_digit'] = self.data['referenceid'][3]
+            aadhaar_prop_name = self.details[i]
+            start_idx = self.delimiter[i] + 1
+            end_idx = self.delimiter[i + 1]
+            self.data[aadhaar_prop_name] = self.decompressed_array[start_idx : end_idx].decode("ISO-8859-1")
+
+        # print(f"Extracted data before verification: {self.data}")
+
+        reference_id = self.data.get('reference_id', '')
+        if len(reference_id) >= 4:
+            self.data['aadhaar_last_4_digit'] = reference_id[:4]
+            self.data['aadhaar_last_digit'] = reference_id[3]
+        else:
+            print(f"Reference ID is too short: {reference_id}")
+            print(f"Extracted data: {self.data}")
+
         # Default values to 'email' and 'mobile
         self.data['email'] = False
         self.data['mobile'] = False
         # Updating the fields of 'email' and 'mobile'
-        if int(self.data['email_mobile_status']) in {3, 1}:
+        email_mobile_status = int(self.data.get('email_mobile_status', -1))
+        if email_mobile_status in {3, 1}:
             self.data['email'] = True
-        if int(self.data['email_mobile_status']) in {3, 2}:
+        if email_mobile_status in {3, 2}:
             self.data['mobile'] = True
 
     # Returns the extracted data in a dictionary format
@@ -79,27 +101,44 @@ class AadhaarSecureQr:
     def isEmailRegistered(self) -> bool:
         return self.data['email']
 
-    # Return hash of the email id
+    # Return hash of the email id.
+    # Check the value of Email_mobile_present_bit_indicator_value:
+    #   * If its 3 then first read mobile from index (Byte array length - 1 - 256) and
+    #       then email from index (Byte array length - 1 - 256 - 32) in reverse order. Each value will be of fix size of 32 byte.
+    #
+    #   * If Email_mobile_present_bit_indicator_value is 1 then only mobile is present.
+    #
+    #   * If Email_mobile_present_bit_indicator_value is 2 then only email is present.
+    #
+    #   * If Email_mobile_present_bit_indicator_value is 0 then no mobile or email present.
+    #
+    # Email and Mobile value will available in byte. Convert into Hexadecimal String
     def sha256hashOfEMail(self) -> str:
         tmp = ""
-        if int(self.data['email_mobile_status']) == 3:
-            tmp = self.decompressed_array[len(self.decompressed_array)-256-32-32:len(self.decompressed_array)-256-32].hex()
-        elif int(self.data['email_mobile_status']) == 1:
-            tmp = self.decompressed_array[len(self.decompressed_array)-256-32:len(self.decompressed_array)-256].hex()
+        email_mobile_status = int(self.data.get('email_mobile_status', -1))
+
+        if email_mobile_status == 3:
+            start_idx = len(self.decompressed_array)-256-32-32
+            end_idx = len(self.decompressed_array)-256-32
+            tmp = self.decompressed_array[start_idx : end_idx].hex()
+        elif email_mobile_status == 2:
+            start_idx = len(self.decompressed_array)-256-32
+            end_idx = len(self.decompressed_array)-256
+            tmp = self.decompressed_array[start_idx : end_idx].hex()
+
         return tmp
 
     # Return hash of the mobile number
     def sha256hashOfMobileNumber(self) -> str:
-        return (
-            self.decompressed_array[
-                len(self.decompressed_array)
-                - 256
-                - 32 : len(self.decompressed_array)
-                - 256
-            ].hex()
-            if int(self.data['email_mobile_status']) in {3, 2}
-            else ""
-        )
+        tmp = ""
+        email_mobile_status = int(self.data.get('email_mobile_status', -1))
+
+        if email_mobile_status in {3, 1}:
+            start_idx = len(self.decompressed_array)-256-32
+            end_idx = len(self.decompressed_array)-256
+            tmp = self.decompressed_array[start_idx : end_idx].hex()
+
+        return tmp
 
     # Check availability of image in the QR CODE
     def isImage(self, buffer = 10) -> bool:
@@ -107,7 +146,7 @@ class AadhaarSecureQr:
             return (
                 len(
                     self.decompressed_array[
-                        self.delimeter[len(self.details)] + 1 :
+                        self.delimiter[len(self.details)] + 1 :
                     ]
                 )
                 >= 256 + 32 + 32 + buffer
@@ -116,7 +155,7 @@ class AadhaarSecureQr:
             return (
                 len(
                     self.decompressed_array[
-                        self.delimeter[len(self.details)] + 1 :
+                        self.delimiter[len(self.details)] + 1 :
                     ]
                 )
                 >= 256 + 32 + buffer
@@ -125,40 +164,32 @@ class AadhaarSecureQr:
             return (
                 len(
                     self.decompressed_array[
-                        self.delimeter[len(self.details)] + 1 :
+                        self.delimiter[len(self.details)] + 1 :
                     ]
                 )
                 >= 256 + buffer
             )
-    
+
     # Return image stream
-    def image(self) -> Union[Image.Image,None]:
-        if int(self.data['email_mobile_status']) == 3:
-            return Image.open(
-                BytesIO(
-                    self.decompressed_array[
-                        self.delimeter[len(self.details)] + 1 :
-                    ]
-                )
-            )
-        elif int(self.data['email_mobile_status']) in {2, 1}:
-            return Image.open(
-                BytesIO(
-                    self.decompressed_array[
-                        self.delimeter[len(self.details)] + 1 :
-                    ]
-                )
-            )
-        elif int(self.data['email_mobile_status']) == 0:
-            return Image.open(
-                BytesIO(
-                    self.decompressed_array[
-                        self.delimeter[len(self.details)] + 1 :
-                    ]
-                )
-            )
+    def image(self, format='img') -> Union[Image.Image,None]:
+        email_mobile_status = int(self.data.get('email_mobile_status', -1))
+        image_byte_data = None
+        num_aadhaar_props = len(self.details)
+        start_idx = self.delimiter[num_aadhaar_props] + 1
+
+        if email_mobile_status == 3:
+            image_byte_data = self.decompressed_array[start_idx : ]
+        elif email_mobile_status in {2, 1}:
+            image_byte_data = self.decompressed_array[start_idx : ]
+        elif email_mobile_status == 0:
+            image_byte_data = self.decompressed_array[start_idx : ]
         else:
             return None
+
+        if 'bytedata' == format:
+            return image_byte_data
+        else:
+            return Image.open(BytesIO(image_byte_data))
 
     # Save the image of the user
     def saveimage(self, filepath:str) -> None:
@@ -173,7 +204,7 @@ class AadhaarSecureQr:
         generated_sha_mail = utils.SHAGenerator(emailid, self.data['aadhaar_last_digit'])
         return generated_sha_mail == self.sha256hashOfEMail()
 
-    # Verify the mobile no  
+    # Verify the mobile no
     def verifyMobileNumber(self, mobileno:str) -> bool:
         if type(mobileno) != str:
             raise TypeError("Mobile number should be string")

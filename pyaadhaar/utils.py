@@ -19,9 +19,9 @@ def SHAGenerator(string, n):
 
     tmp_sha = str(string)
     if int(n) == 0 or int(n) == 1:
-        return sha256(tmp_sha.encode()).hexdigest()
+        return sha256(tmp_sha.encode("ISO-8859-1")).hexdigest()
     for i in range(int(n)):
-        tmp_sha = sha256(tmp_sha.encode()).hexdigest()
+        tmp_sha = sha256(tmp_sha.encode("ISO-8859-1")).hexdigest()
     return tmp_sha
 
 
