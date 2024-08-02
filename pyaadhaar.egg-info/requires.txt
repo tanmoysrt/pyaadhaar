@@ -8,3 +8,4 @@ pytz
 pyzbar
 six
 toml
+pycryptodome

@@ -33,7 +33,8 @@ setup(
         'pytz',
         'pyzbar',
         'six',
-        'toml'
+        'toml',
+        'pycryptodome'
     ],
 
 )
