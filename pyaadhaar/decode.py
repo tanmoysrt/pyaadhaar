@@ -86,13 +86,16 @@ class AadhaarSecureQr:
     def sha256hashOfEMail(self) -> str:
         tmp = ""
         if int(self.data['email_mobile_status']) == 3:
+            # When both present: email is at [len-256-32-32:len-256-32]
             tmp = self.decompressed_array[len(self.decompressed_array)-256-32-32:len(self.decompressed_array)-256-32].hex()
         elif int(self.data['email_mobile_status']) == 1:
+            # When only email: email is at [len-256-32:len-256]
             tmp = self.decompressed_array[len(self.decompressed_array)-256-32:len(self.decompressed_array)-256].hex()
         return tmp
 
     # Return hash of the mobile number
     def sha256hashOfMobileNumber(self) -> str:
+        # When both (3) or only mobile (2): mobile is at [len-256-32:len-256]
         return (
             self.decompressed_array[
                 len(self.decompressed_array)
@@ -180,8 +183,15 @@ class AadhaarSecureQr:
     def verifyMobileNumber(self, mobileno:str) -> bool:
         if type(mobileno) != str:
             raise TypeError("Mobile number should be string")
-        generated_sha_mobile = utils.SHAGenerator(mobileno, self.data['aadhaar_last_digit'])
-        return generated_sha_mobile == self.sha256hashOfMobileNumber()
+        
+        # Check if V3 format with last_4_digits_mobile_no field
+        if 'last_4_digits_mobile_no' in self.data and self.data.get('last_4_digits_mobile_no'):
+            # V3 format: verify by comparing last 4 digits
+            return mobileno[-4:] == self.data['last_4_digits_mobile_no']
+        else:
+            # V2 format or standard: verify by SHA256 hash
+            generated_sha_mobile = utils.SHAGenerator(mobileno, self.data['aadhaar_last_digit'])
+            return generated_sha_mobile == self.sha256hashOfMobileNumber()
 
 
 class AadhaarOldQr:
