@@ -84,6 +84,10 @@ class AadhaarSecureQr:
 
     # Return hash of the email id
     def sha256hashOfEMail(self) -> str:
+        # V3 format doesn't store email/mobile hashes, only last 4 digits in text field
+        if 'version' in self.data and self.data.get('version') in ('V2', 'V3'):
+            return ""  # V3 format uses text field verification, not hash
+        
         tmp = ""
         if int(self.data['email_mobile_status']) == 3:
             # When both present: email is at [len-256-32-32:len-256-32]
@@ -95,6 +99,10 @@ class AadhaarSecureQr:
 
     # Return hash of the mobile number
     def sha256hashOfMobileNumber(self) -> str:
+        # V3 format doesn't store email/mobile hashes, only last 4 digits in text field
+        if 'version' in self.data and self.data.get('version') in ('V2', 'V3'):
+            return ""  # V3 format uses text field verification, not hash
+        
         # When both (3) or only mobile (2): mobile is at [len-256-32:len-256]
         return (
             self.decompressed_array[
@@ -109,7 +117,26 @@ class AadhaarSecureQr:
 
     # Check availability of image in the QR CODE
     def isImage(self, buffer = 10) -> bool:
-        if int(self.data['email_mobile_status']) == 3:
+        # V3 format: use last delimiter before version/last_4_digits fields
+        # Standard format: use delimiter at len(self.details)
+        if 'version' in self.data and self.data.get('version') in ('V2', 'V3'):
+            # V3 has extra fields, photo ends before signature only (no hash storage)
+            last_text_delimiter_idx = len(self.details) - 2 if 'last_4_digits_mobile_no' in self.details else len(self.details) - 1
+        else:
+            last_text_delimiter_idx = len(self.details)
+        
+        # For V3, only signature after photo (no hashes)
+        if 'version' in self.data and self.data.get('version') in ('V2', 'V3'):
+            return (
+                len(
+                    self.decompressed_array[
+                        self.delimeter[last_text_delimiter_idx] + 1 :
+                    ]
+                )
+                >= 256 + buffer
+            )
+        # Standard format with hash storage
+        elif int(self.data['email_mobile_status']) == 3:
             return (
                 len(
                     self.decompressed_array[
@@ -139,27 +166,39 @@ class AadhaarSecureQr:
     
     # Return image stream
     def image(self) -> Union[Image.Image,None]:
+        # V3 format: Photo starts after all text fields have been extracted
+        if 'version' in self.data and self.data.get('version') in ('V2', 'V3'):
+            # Photo starts after delimiter at index len(self.details)
+            # (fields use delimiters 0 through len-1, photo starts after next delimiter)
+            photo_start = self.delimeter[len(self.details)] + 1
+            photo_end = len(self.decompressed_array) - 256
+            return Image.open(BytesIO(self.decompressed_array[photo_start:photo_end]))
+        
+        # Standard format with hash storage
         if int(self.data['email_mobile_status']) == 3:
+            photo_end = len(self.decompressed_array) - 256 - 32 - 32
             return Image.open(
                 BytesIO(
                     self.decompressed_array[
-                        self.delimeter[len(self.details)] + 1 :
+                        self.delimeter[len(self.details)] + 1 : photo_end
                     ]
                 )
             )
         elif int(self.data['email_mobile_status']) in {2, 1}:
+            photo_end = len(self.decompressed_array) - 256 - 32
             return Image.open(
                 BytesIO(
                     self.decompressed_array[
-                        self.delimeter[len(self.details)] + 1 :
+                        self.delimeter[len(self.details)] + 1 : photo_end
                     ]
                 )
             )
         elif int(self.data['email_mobile_status']) == 0:
+            photo_end = len(self.decompressed_array) - 256
             return Image.open(
                 BytesIO(
                     self.decompressed_array[
-                        self.delimeter[len(self.details)] + 1 :
+                        self.delimeter[len(self.details)] + 1 : photo_end
                     ]
                 )
             )
