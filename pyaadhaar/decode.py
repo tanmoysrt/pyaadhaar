@@ -31,10 +31,11 @@ class AadhaarSecureQr:
         bytes_array = self.base10encodedstring.to_bytes(5000, 'big').lstrip(b'\x00')
         self.decompressed_array = zlib.decompress(bytes_array, 16+zlib.MAX_WBITS)
 
-    # This function will check for the new 2022 version-2 Aadhaar QRs
+    # This function will check for the new 2022 version-2 and version-3 Aadhaar QRs
     # If not found it will remove the "version" key from self.details, Defaulting to normal Secure QRs
     def _check_aadhaar_version(self) -> None:
-        if self.decompressed_array[:2].decode("ISO-8859-1") != 'V2':
+        version_marker = self.decompressed_array[:2].decode("ISO-8859-1")
+        if version_marker not in ('V2', 'V3'):
             self.details.pop(0) # Removing "Version"
             self.details.pop() # Removing "Last_4_digits_of_mobile_no"
 
@@ -48,8 +49,8 @@ class AadhaarSecureQr:
     def _extract_info_from_decompressed_array(self) -> None:
         for i in range(len(self.details)):
             self.data[self.details[i]] = self.decompressed_array[self.delimeter[i] + 1:self.delimeter[i+1]].decode("ISO-8859-1")
-        self.data['aadhaar_last_4_digit'] = self.data['referenceid'][:4]
-        self.data['aadhaar_last_digit'] = self.data['referenceid'][3]
+        self.data['aadhaar_last_4_digit'] = self.data['referenceid'][:4] if len(self.data['referenceid']) >= 4 else self.data['referenceid']
+        self.data['aadhaar_last_digit'] = self.data['referenceid'][3] if len(self.data['referenceid']) > 3 else (self.data['referenceid'][-1] if len(self.data['referenceid']) > 0 else '')
         # Default values to 'email' and 'mobile
         self.data['email'] = False
         self.data['mobile'] = False
