@@ -12,8 +12,8 @@ from . import utils
 class AadhaarSecureQr:
     # This is the class for Aadhaar Secure Qr code..  In this version of code the data is in encrypted format
     # The special thing of this type of QR is that we can extract the photo of user from the data
-    # This class now supports 2022 version of Aadhaar QR codes [version-2]
-    # For more information check here : https://103.57.226.101/images/resource/User_manulal_QR_Code_15032019.pdf
+    # This class now supports current version of Aadhaar QR codes [version-3]
+    # For more information check here : https://uidai.gov.in/images/resource/User_manulal_QR_Code_15032019.pdf
 
     def __init__(self, base10encodedstring:str) -> None:
         self.base10encodedstring = base10encodedstring
