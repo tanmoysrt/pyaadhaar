@@ -17,12 +17,12 @@ class AadhaarSecureQr:
 
     def __init__(self, base10encodedstring:str) -> None:
         self.base10encodedstring = base10encodedstring
-        self.details = ["version","email_mobile_status","referenceid", "name", "dob", "gender", "careof", "district", "landmark",
-                        "house", "location", "pincode", "postoffice", "state", "street", "subdistrict", "vtc", "last_4_digits_mobile_no"]
+        self.details = ["email_mobile_status","referenceid", "name", "dob", "gender", "careof", "district", "landmark",
+                        "house", "location", "pincode", "postoffice", "state", "street", "subdistrict", "vtc"]
         self.delimeter = [-1]
         self.data = {}
         self._convert_base10encoded_to_decompressed_array()
-        self._check_aadhaar_version()
+        self._check_for_version2()  # Check if V2/V3 format exists
         self._create_delimeter()
         self._extract_info_from_decompressed_array()
 
@@ -31,13 +31,13 @@ class AadhaarSecureQr:
         bytes_array = self.base10encodedstring.to_bytes(5000, 'big').lstrip(b'\x00')
         self.decompressed_array = zlib.decompress(bytes_array, 16+zlib.MAX_WBITS)
 
-    # This function will check for the new 2022 version-2 and version-3 Aadhaar QRs
-    # If not found it will remove the "version" key from self.details, Defaulting to normal Secure QRs
-    def _check_aadhaar_version(self) -> None:
-        version_marker = self.decompressed_array[:2].decode("ISO-8859-1")
-        if version_marker not in ('V2', 'V3'):
-            self.details.pop(0) # Removing "Version"
-            self.details.pop() # Removing "Last_4_digits_of_mobile_no"
+    def _check_for_version2(self) -> None:
+        """Check for V2/V3 version markers (non-standard extension)"""
+        version_marker = self.decompressed_array[:2].decode("ISO-8859-1", errors='ignore')
+        if version_marker in ('V2', 'V3'):
+            # If version marker exists, add version and mobile fields
+            self.details.insert(0, "version")
+            self.details.append("last_4_digits_mobile_no")
 
     # Creates the delimeter which is used to extract the information from the decompressed array
     def _create_delimeter(self) -> None:
@@ -48,17 +48,19 @@ class AadhaarSecureQr:
     # Extracts the information from the decompressed array
     def _extract_info_from_decompressed_array(self) -> None:
         for i in range(len(self.details)):
-            self.data[self.details[i]] = self.decompressed_array[self.delimeter[i] + 1:self.delimeter[i+1]].decode("ISO-8859-1")
+            self.data[self.details[i]] = self.decompressed_array[
+                self.delimeter[i] + 1:self.delimeter[i+1]
+            ].decode("ISO-8859-1")
+        
+        # Extract last 4 digits of Aadhaar (first 4 chars of referenceId)
         self.data['aadhaar_last_4_digit'] = self.data['referenceid'][:4] if len(self.data['referenceid']) >= 4 else self.data['referenceid']
-        self.data['aadhaar_last_digit'] = self.data['referenceid'][3] if len(self.data['referenceid']) > 3 else (self.data['referenceid'][-1] if len(self.data['referenceid']) > 0 else '')
-        # Default values to 'email' and 'mobile
-        self.data['email'] = False
-        self.data['mobile'] = False
-        # Updating the fields of 'email' and 'mobile'
-        if int(self.data['email_mobile_status']) in {3, 1}:
-            self.data['email'] = True
-        if int(self.data['email_mobile_status']) in {3, 2}:
-            self.data['mobile'] = True
+        
+        # Extract last digit of Aadhaar (4th char of referenceId, index 3)
+        self.data['aadhaar_last_digit'] = self.data['referenceid'][3] if len(self.data['referenceid']) > 3 else ''
+        
+        # Set email/mobile flags based on email_mobile_status
+        self.data['email'] = int(self.data['email_mobile_status']) in {1, 3}
+        self.data['mobile'] = int(self.data['email_mobile_status']) in {2, 3}
 
     # Returns the extracted data in a dictionary format
     def decodeddata(self) -> dict:
