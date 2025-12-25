@@ -1,4 +1,4 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.4
 Name: pyaadhaar
 Version: 2.0.2
 Summary: This library is built to ease the process of decoding aadhaar QR codes and XML. It supprts old aadhaar QR codes , newly released Secure aadhaar QR codes and also Offline e-KYC XML. This library also can decode QR codes with Opncv. This library bundled with all the features to verify user's Email Id and Mobile Number & also to extract the photo of user. 
@@ -15,6 +15,28 @@ Classifier: Programming Language :: Python :: 3.8
 Requires-Python: >=3.6
 Description-Content-Type: text/markdown
 License-File: LICENSE
+Requires-Dist: numpy
+Requires-Dist: opencv-python
+Requires-Dist: Pillow
+Requires-Dist: pylibjpeg
+Requires-Dist: pylibjpeg-openjpeg
+Requires-Dist: python-dateutil
+Requires-Dist: pytz
+Requires-Dist: pyzbar
+Requires-Dist: six
+Requires-Dist: toml
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: license
+Dynamic: license-file
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
 
 ## PyAadhaar Library
 

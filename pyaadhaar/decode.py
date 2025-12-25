@@ -12,17 +12,17 @@ from . import utils
 class AadhaarSecureQr:
     # This is the class for Aadhaar Secure Qr code..  In this version of code the data is in encrypted format
     # The special thing of this type of QR is that we can extract the photo of user from the data
-    # This class now supports 2022 version of Aadhaar QR codes [version-2]
-    # For more information check here : https://103.57.226.101/images/resource/User_manulal_QR_Code_15032019.pdf
+    # This class now supports current version of Aadhaar QR codes [version-3]
+    # For more information check here : https://uidai.gov.in/images/resource/User_manulal_QR_Code_15032019.pdf
 
     def __init__(self, base10encodedstring:str) -> None:
         self.base10encodedstring = base10encodedstring
-        self.details = ["version","email_mobile_status","referenceid", "name", "dob", "gender", "careof", "district", "landmark",
-                        "house", "location", "pincode", "postoffice", "state", "street", "subdistrict", "vtc", "last_4_digits_mobile_no"]
+        self.details = ["email_mobile_status","referenceid", "name", "dob", "gender", "careof", "district", "landmark",
+                        "house", "location", "pincode", "postoffice", "state", "street", "subdistrict", "vtc"]
         self.delimeter = [-1]
         self.data = {}
         self._convert_base10encoded_to_decompressed_array()
-        self._check_aadhaar_version()
+        self._check_for_version2()  # Check if V2/V3 format exists
         self._create_delimeter()
         self._extract_info_from_decompressed_array()
 
@@ -31,12 +31,13 @@ class AadhaarSecureQr:
         bytes_array = self.base10encodedstring.to_bytes(5000, 'big').lstrip(b'\x00')
         self.decompressed_array = zlib.decompress(bytes_array, 16+zlib.MAX_WBITS)
 
-    # This function will check for the new 2022 version-2 Aadhaar QRs
-    # If not found it will remove the "version" key from self.details, Defaulting to normal Secure QRs
-    def _check_aadhaar_version(self) -> None:
-        if self.decompressed_array[:2].decode("ISO-8859-1") != 'V2':
-            self.details.pop(0) # Removing "Version"
-            self.details.pop() # Removing "Last_4_digits_of_mobile_no"
+    def _check_for_version2(self) -> None:
+        """Check for V2/V3 version markers (non-standard extension)"""
+        version_marker = self.decompressed_array[:2].decode("ISO-8859-1", errors='ignore')
+        if version_marker in ('V2', 'V3'):
+            # If version marker exists, add version and mobile fields
+            self.details.insert(0, "version")
+            self.details.append("last_4_digits_mobile_no")
 
     # Creates the delimeter which is used to extract the information from the decompressed array
     def _create_delimeter(self) -> None:
@@ -47,17 +48,19 @@ class AadhaarSecureQr:
     # Extracts the information from the decompressed array
     def _extract_info_from_decompressed_array(self) -> None:
         for i in range(len(self.details)):
-            self.data[self.details[i]] = self.decompressed_array[self.delimeter[i] + 1:self.delimeter[i+1]].decode("ISO-8859-1")
-        self.data['aadhaar_last_4_digit'] = self.data['referenceid'][:4]
-        self.data['aadhaar_last_digit'] = self.data['referenceid'][3]
-        # Default values to 'email' and 'mobile
-        self.data['email'] = False
-        self.data['mobile'] = False
-        # Updating the fields of 'email' and 'mobile'
-        if int(self.data['email_mobile_status']) in {3, 1}:
-            self.data['email'] = True
-        if int(self.data['email_mobile_status']) in {3, 2}:
-            self.data['mobile'] = True
+            self.data[self.details[i]] = self.decompressed_array[
+                self.delimeter[i] + 1:self.delimeter[i+1]
+            ].decode("ISO-8859-1")
+        
+        # Extract last 4 digits of Aadhaar (first 4 chars of referenceId)
+        self.data['aadhaar_last_4_digit'] = self.data['referenceid'][:4] if len(self.data['referenceid']) >= 4 else self.data['referenceid']
+        
+        # Extract last digit of Aadhaar (4th char of referenceId, index 3)
+        self.data['aadhaar_last_digit'] = self.data['referenceid'][3] if len(self.data['referenceid']) > 3 else ''
+        
+        # Set email/mobile flags based on email_mobile_status
+        self.data['email'] = int(self.data['email_mobile_status']) in {1, 3}
+        self.data['mobile'] = int(self.data['email_mobile_status']) in {2, 3}
 
     # Returns the extracted data in a dictionary format
     def decodeddata(self) -> dict:
@@ -81,15 +84,26 @@ class AadhaarSecureQr:
 
     # Return hash of the email id
     def sha256hashOfEMail(self) -> str:
+        # V3 format doesn't store email/mobile hashes, only last 4 digits in text field
+        if 'version' in self.data and self.data.get('version') in ('V2', 'V3'):
+            return ""  # V3 format uses text field verification, not hash
+        
         tmp = ""
         if int(self.data['email_mobile_status']) == 3:
+            # When both present: email is at [len-256-32-32:len-256-32]
             tmp = self.decompressed_array[len(self.decompressed_array)-256-32-32:len(self.decompressed_array)-256-32].hex()
         elif int(self.data['email_mobile_status']) == 1:
+            # When only email: email is at [len-256-32:len-256]
             tmp = self.decompressed_array[len(self.decompressed_array)-256-32:len(self.decompressed_array)-256].hex()
         return tmp
 
     # Return hash of the mobile number
     def sha256hashOfMobileNumber(self) -> str:
+        # V3 format doesn't store email/mobile hashes, only last 4 digits in text field
+        if 'version' in self.data and self.data.get('version') in ('V2', 'V3'):
+            return ""  # V3 format uses text field verification, not hash
+        
+        # When both (3) or only mobile (2): mobile is at [len-256-32:len-256]
         return (
             self.decompressed_array[
                 len(self.decompressed_array)
@@ -103,7 +117,26 @@ class AadhaarSecureQr:
 
     # Check availability of image in the QR CODE
     def isImage(self, buffer = 10) -> bool:
-        if int(self.data['email_mobile_status']) == 3:
+        # V3 format: use last delimiter before version/last_4_digits fields
+        # Standard format: use delimiter at len(self.details)
+        if 'version' in self.data and self.data.get('version') in ('V2', 'V3'):
+            # V3 has extra fields, photo ends before signature only (no hash storage)
+            last_text_delimiter_idx = len(self.details) - 2 if 'last_4_digits_mobile_no' in self.details else len(self.details) - 1
+        else:
+            last_text_delimiter_idx = len(self.details)
+        
+        # For V3, only signature after photo (no hashes)
+        if 'version' in self.data and self.data.get('version') in ('V2', 'V3'):
+            return (
+                len(
+                    self.decompressed_array[
+                        self.delimeter[last_text_delimiter_idx] + 1 :
+                    ]
+                )
+                >= 256 + buffer
+            )
+        # Standard format with hash storage
+        elif int(self.data['email_mobile_status']) == 3:
             return (
                 len(
                     self.decompressed_array[
@@ -133,27 +166,39 @@ class AadhaarSecureQr:
     
     # Return image stream
     def image(self) -> Union[Image.Image,None]:
+        # V3 format: Photo starts after all text fields have been extracted
+        if 'version' in self.data and self.data.get('version') in ('V2', 'V3'):
+            # Photo starts after delimiter at index len(self.details)
+            # (fields use delimiters 0 through len-1, photo starts after next delimiter)
+            photo_start = self.delimeter[len(self.details)] + 1
+            photo_end = len(self.decompressed_array) - 256
+            return Image.open(BytesIO(self.decompressed_array[photo_start:photo_end]))
+        
+        # Standard format with hash storage
         if int(self.data['email_mobile_status']) == 3:
+            photo_end = len(self.decompressed_array) - 256 - 32 - 32
             return Image.open(
                 BytesIO(
                     self.decompressed_array[
-                        self.delimeter[len(self.details)] + 1 :
+                        self.delimeter[len(self.details)] + 1 : photo_end
                     ]
                 )
             )
         elif int(self.data['email_mobile_status']) in {2, 1}:
+            photo_end = len(self.decompressed_array) - 256 - 32
             return Image.open(
                 BytesIO(
                     self.decompressed_array[
-                        self.delimeter[len(self.details)] + 1 :
+                        self.delimeter[len(self.details)] + 1 : photo_end
                     ]
                 )
             )
         elif int(self.data['email_mobile_status']) == 0:
+            photo_end = len(self.decompressed_array) - 256
             return Image.open(
                 BytesIO(
                     self.decompressed_array[
-                        self.delimeter[len(self.details)] + 1 :
+                        self.delimeter[len(self.details)] + 1 : photo_end
                     ]
                 )
             )
@@ -177,8 +222,15 @@ class AadhaarSecureQr:
     def verifyMobileNumber(self, mobileno:str) -> bool:
         if type(mobileno) != str:
             raise TypeError("Mobile number should be string")
-        generated_sha_mobile = utils.SHAGenerator(mobileno, self.data['aadhaar_last_digit'])
-        return generated_sha_mobile == self.sha256hashOfMobileNumber()
+        
+        # Check if V3 format with last_4_digits_mobile_no field
+        if 'last_4_digits_mobile_no' in self.data and self.data.get('last_4_digits_mobile_no'):
+            # V3 format: verify by comparing last 4 digits
+            return mobileno[-4:] == self.data['last_4_digits_mobile_no']
+        else:
+            # V2 format or standard: verify by SHA256 hash
+            generated_sha_mobile = utils.SHAGenerator(mobileno, self.data['aadhaar_last_digit'])
+            return generated_sha_mobile == self.sha256hashOfMobileNumber()
 
 
 class AadhaarOldQr:
