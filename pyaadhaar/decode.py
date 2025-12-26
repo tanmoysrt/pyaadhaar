@@ -22,7 +22,7 @@ class AadhaarSecureQr:
         self.delimeter = [-1]
         self.data = {}
         self._convert_base10encoded_to_decompressed_array()
-        self._check_for_version2()  # Check if V2/V3 format exists
+        self._check_for_version()  # Check if V2/V3 format exists
         self._create_delimeter()
         self._extract_info_from_decompressed_array()
 
@@ -31,10 +31,10 @@ class AadhaarSecureQr:
         bytes_array = self.base10encodedstring.to_bytes(5000, 'big').lstrip(b'\x00')
         self.decompressed_array = zlib.decompress(bytes_array, 16+zlib.MAX_WBITS)
 
-    def _check_for_version2(self) -> None:
-        """Check for V2/V3 version markers (non-standard extension)"""
+    def _check_for_version(self) -> None:
+        """Check for Vx version markers (non-standard extension)"""
         version_marker = self.decompressed_array[:2].decode("ISO-8859-1", errors='ignore')
-        if version_marker in ('V2', 'V3'):
+        if version_marker.startswith("V") and version_marker[1].isdigit():
             # If version marker exists, add version and mobile fields
             self.details.insert(0, "version")
             self.details.append("last_4_digits_mobile_no")
