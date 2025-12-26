@@ -22,7 +22,7 @@ class AadhaarSecureQr:
         self.delimeter = [-1]
         self.data = {}
         self._convert_base10encoded_to_decompressed_array()
-        self._check_for_version()  # Check if V2/V3 format exists
+        self._check_for_version()  # Check if Vx format exists
         self._create_delimeter()
         self._extract_info_from_decompressed_array()
 
@@ -84,8 +84,8 @@ class AadhaarSecureQr:
 
     # Return hash of the email id
     def sha256hashOfEMail(self) -> str:
-        # V3 format doesn't store email/mobile hashes, only last 4 digits in text field
-        if 'version' in self.data and self.data.get('version') in ('V2', 'V3'):
+        # V3/V5 format doesn't store email/mobile hashes, only last 4 digits in text field
+        if 'version' in self.data and self.data.get('version') in ('V2', 'V3', 'V5'):
             return ""  # V3 format uses text field verification, not hash
         
         tmp = ""
@@ -99,8 +99,8 @@ class AadhaarSecureQr:
 
     # Return hash of the mobile number
     def sha256hashOfMobileNumber(self) -> str:
-        # V3 format doesn't store email/mobile hashes, only last 4 digits in text field
-        if 'version' in self.data and self.data.get('version') in ('V2', 'V3'):
+        # V3/V5 format doesn't store email/mobile hashes, only last 4 digits in text field
+        if 'version' in self.data and self.data.get('version') in ('V2', 'V3', 'V5'):
             return ""  # V3 format uses text field verification, not hash
         
         # When both (3) or only mobile (2): mobile is at [len-256-32:len-256]
@@ -117,9 +117,9 @@ class AadhaarSecureQr:
 
     # Check availability of image in the QR CODE
     def isImage(self, buffer = 10) -> bool:
-        # V3 format: use last delimiter before version/last_4_digits fields
+        # V3/V5 format: use last delimiter before version/last_4_digits fields
         # Standard format: use delimiter at len(self.details)
-        if 'version' in self.data and self.data.get('version') in ('V2', 'V3'):
+        if 'version' in self.data and self.data.get('version') in ('V2', 'V3', 'V5'):
             # V3 has extra fields, photo ends before signature only (no hash storage)
             last_text_delimiter_idx = len(self.details) - 2 if 'last_4_digits_mobile_no' in self.details else len(self.details) - 1
         else:
@@ -166,8 +166,8 @@ class AadhaarSecureQr:
     
     # Return image stream
     def image(self) -> Union[Image.Image,None]:
-        # V3 format: Photo starts after all text fields have been extracted
-        if 'version' in self.data and self.data.get('version') in ('V2', 'V3'):
+        # V3/V5 format: Photo starts after all text fields have been extracted
+        if 'version' in self.data and self.data.get('version') in ('V2', 'V3', 'V5'):
             # Photo starts after delimiter at index len(self.details)
             # (fields use delimiters 0 through len-1, photo starts after next delimiter)
             photo_start = self.delimeter[len(self.details)] + 1
@@ -223,8 +223,16 @@ class AadhaarSecureQr:
         if type(mobileno) != str:
             raise TypeError("Mobile number should be string")
         
+        if ('version' in self.data and self.data.get('version') in ('V5')):
+            masked = self.data.get('last_4_digits_mobile_no')
+
+            if not masked or len(masked) < 4 or len(mobileno) < 4:
+                return False
+
+            return mobileno[-4:] == masked[-4:]
+        
         # Check if V3 format with last_4_digits_mobile_no field
-        if 'last_4_digits_mobile_no' in self.data and self.data.get('last_4_digits_mobile_no'):
+        elif 'last_4_digits_mobile_no' in self.data and self.data.get('last_4_digits_mobile_no'):
             # V3 format: verify by comparing last 4 digits
             return mobileno[-4:] == self.data['last_4_digits_mobile_no']
         else:
